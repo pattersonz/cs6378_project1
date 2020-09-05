@@ -6,8 +6,6 @@
 #include <sys/socket.h>
 #include <resolv.h>
 #include <netdb.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include "unitStructs.h"
 
 int main()

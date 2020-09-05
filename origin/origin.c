@@ -4,23 +4,86 @@
 #include <malloc.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <resolv.h>
-#include <netdb.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
+#include <pthread.h>
 #include "unitStructs.h"
 
 PROC *procs;
 unsigned totalProcs = 0;
 
 void getProcs();
+void *contactProc(void* ptr);
 int main()
 {
   getProcs();
-  printProcs(totalProcs, procs);
+  pthread_t *threads;
+  threads = (pthread_t*)malloc(totalProcs*sizeof(pthread_t));
+  unsigned i;
+  for (i = 0; i < totalProcs; ++i)
+	pthread_create(&(threads[i]), NULL, &contactProc, (void*)&procs[i]);
+  for (i = 0; i < totalProcs; ++i)
+	pthread_join(threads[i],NULL);
+  return 0;
+}
+
+void *contactProc(void* ptr)
+{
+  PROC *p = (PROC*)ptr;
+  printProcs(1,p);
+  //setup socket connection
+  int sock = 0, valread; 
+  struct sockaddr_in serv_addr; 
+  char buf[1024] = {0}; 
+  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+  { 
+	printf("\n Socket creation error \n"); 
+	return (void*)-1; 
+  } 
+   
+  serv_addr.sin_family = AF_INET; 
+  serv_addr.sin_port = htons(ORIGIN_PORT); 
+       
+  // Convert IPv4 and IPv6 addresses from text to binary form
+  char* adr = "xxxx.utdallas.edu";
+  unsigned i;
+  for (i = 0; i < 4; ++i)
+	adr[i] = p->mach[i];
+  if(inet_pton(AF_INET, adr, &serv_addr.sin_addr)<=0)  
+  { 
+	printf("\nInvalid address/ Address not supported \n"); 
+	return (void*)-1; 
+  } 
+   
+  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+  { 
+	printf("\nConnection Failed \n"); 
+	return (void*)-1; 
+  }
+  
   //send neighbors
+  OMSG o;
+  o.id = p->id;
+  o.nCount= p->nCount;
+  o.neighbors = (char**)malloc(o.nCount*sizeof(char*));
+  o.ports = (us*)malloc(o.nCount*sizeof(us));
+  for (i = 0; i < o.nCount; ++i)
+  {
+	us id = p->id;
+	o.neighbors[i] = procs[id].mach;
+	o.ports[i] = procs[id].port;
+  }
+  serialize_OMSG(buf,o);
+  send(sock , buf , 1024, 0 );
+  free(o.neighbors);
+  free(o.ports);
   //wait for results
+  valread = read( sock , buf, 1024);
+  us res;
+  deserialize_u_short(buf,&res);
   //print results
+  printf("%d:%d\n",p->id,res);
+  return (void*)0; 
 }
 
 void getProcs()
@@ -127,7 +190,7 @@ void getProcs()
 			  temp = temp->next;
 			}
 			procs[totalProcs].nCount = size;
-			procs[totalProcs].neighbors = (unsigned*)malloc(size*sizeof(unsigned));
+			procs[totalProcs].neighbors = (us*)malloc(size*sizeof(unsigned));
 			size = 0;
 			temp = startN;
 			while(temp != NULL)
