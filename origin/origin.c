@@ -3,8 +3,11 @@
 #include <unistd.h>
 #include <malloc.h>
 #include <string.h>
+#include <netdb.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <resolv.h>
 #include <pthread.h>
 #include "unitStructs.h"
@@ -13,7 +16,9 @@ PROC *procs;
 unsigned totalProcs = 0;
 
 void getProcs();
-void *contactProc(void* ptr);
+void *contactProc(void* ptr); 
+void checkHostEntry(struct hostent * hostentry);
+void checkIPbuffer(char *IPbuffer) ;  
 int main()
 {
   getProcs();
@@ -32,35 +37,52 @@ void *contactProc(void* ptr)
   PROC *p = (PROC*)ptr;
   printProcs(1,p);
   //setup socket connection
-  int sock = 0, valread; 
+  int sock = 0; 
   struct sockaddr_in serv_addr; 
-  char buf[1024] = {0}; 
+  char buf[1024] = {0};
+  
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
   { 
 	printf("\n Socket creation error \n"); 
 	return (void*)-1; 
   } 
-   
+
+  printf("set ip p:%d\n",p->id);
+  
   serv_addr.sin_family = AF_INET; 
   serv_addr.sin_port = htons(ORIGIN_PORT); 
        
   // Convert IPv4 and IPv6 addresses from text to binary form
-  char* adr = "xxxx.utdallas.edu";
+  char adr[17] = "xxxx.utdallas.edu";
   unsigned i;
-  for (i = 0; i < 4; ++i)
-	adr[i] = p->mach[i];
-  if(inet_pton(AF_INET, adr, &serv_addr.sin_addr)<=0)  
+  memcpy(adr,p->mach,4);
+  
+  char *ip; 
+  struct hostent *adrTrue; 
+
+  // To retrieve host information 
+  adrTrue = gethostbyname(adr); 
+  checkHostEntry(adrTrue); 
+  
+  // To convert an Internet network 
+  // address into ASCII string 
+  ip = inet_ntoa(*((struct in_addr*) 
+						 adrTrue->h_addr_list[0])); 
+  
+  if(inet_pton(AF_INET, ip, &serv_addr.sin_addr)<=0)  
   { 
-	printf("\nInvalid address/ Address not supported \n"); 
+	printf("\nInvalid address \"%s\" Address not supported \n",ip); 
 	return (void*)-1; 
   } 
    
+  printf("connect p:%d\n",p->id);
   if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
   { 
 	printf("\nConnection Failed \n"); 
 	return (void*)-1; 
   }
   
+  printf("connected p:",p->id);
   //send neighbors
   OMSG o;
   o.id = p->id;
@@ -74,11 +96,14 @@ void *contactProc(void* ptr)
 	o.ports[i] = procs[id].port;
   }
   serialize_OMSG(buf,o);
+  
+  printf("sending p:%d\n",p->id);
   send(sock , buf , 1024, 0 );
   free(o.neighbors);
   free(o.ports);
   //wait for results
-  valread = read( sock , buf, 1024);
+  read( sock , buf, 1024);
+  printf("read p:%d\n",p->id);
   us res;
   deserialize_u_short(buf,&res);
   //print results
@@ -229,3 +254,25 @@ void getProcs()
   }
   fclose(file);
 }
+
+// Returns host information corresponding to host name 
+void checkHostEntry(struct hostent * hostentry) 
+{ 
+    if (hostentry == NULL) 
+    { 
+        perror("gethostbyname"); 
+        exit(1); 
+    } 
+} 
+  
+// Converts space-delimited IPv4 addresses 
+// to dotted-decimal format 
+void checkIPbuffer(char *IPbuffer) 
+{ 
+    if (NULL == IPbuffer) 
+    { 
+        perror("inet_ntoa"); 
+        exit(1); 
+    } 
+} 
+  
