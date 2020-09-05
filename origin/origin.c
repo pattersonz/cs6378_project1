@@ -36,7 +36,8 @@ void getProcs()
   int curN = -1;
   while (fgets(line, sizeof(line), file) && phase < 3)
   {
-	for (int i = 0; i < 256; ++i)
+	unsigned i;
+	for ( i = 0; i < 256; ++i)
 	{
 	  char c = line[i];
 	  //num Processes
@@ -65,14 +66,15 @@ void getProcs()
 		{
 		  endPort = 1;
 		  unsigned x = 0;
-		  for (unsigned j = startId; j < endId; ++j)
+		  unsigned j;
+		  for (j = startId; j < endId; ++j)
 			x = (x*10) + (line[j] - '0');
 		  char* t = (char*)malloc((endProc - startProc+1)*sizeof(char));
-		  for (unsigned j = startProc; j < endProc; ++j)
+		  for (j = startProc; j < endProc; ++j)
 			t[j-startProc] = line[j];
 		  t[endProc-startProc] = '\0';
 		  unsigned y = 0;
-		  for (unsigned j = startPort; j < i; ++j)
+		  for (j = startPort; j < i; ++j)
 			y = (y*10) + (line[j] - '0');
 		  procs[totalProcs].id = x;
 		  procs[totalProcs].mach = t;

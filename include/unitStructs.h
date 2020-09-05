@@ -18,10 +18,11 @@ typedef struct vector_int
 
 void printProcs(unsigned count, PROC* p)
 {
-  for (unsigned i = 0; i < count; ++i)
+  unsigned i,j;
+  for (i = 0; i < count; ++i)
   {
 	printf("proc:%d\n\tmachine:%s\n\tport:%d\n\tNeighbors:",p[i].id,p[i].mach,p[i].port);
-	for (unsigned j = 0; j < p[i].nCount; ++j)
+	for (j = 0; j < p[i].nCount; ++j)
 	  printf("%d ",p[i].neighbors[j]);
 	printf("\n");
   }
