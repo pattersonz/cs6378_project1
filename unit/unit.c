@@ -13,9 +13,11 @@ void *contactOrigin(void* ptr);
 
 int main()
 {
+  printf("start all\n");
   pthread_t originThread;
   pthread_create(&originThread, NULL, &contactOrigin, NULL);
   pthread_join(originThread, NULL);
+  printf("end all\n");
   return -1;
 } 
 

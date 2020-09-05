@@ -2,11 +2,11 @@
 
 
 # Change this to your netid
-netid=sxg122830
+netid=zjp170130
 
 #
 # Root directory of your project
-PROJDIR=$HOME/TestProj
+PROJDIR=$HOME/cs6378_project1
 
 #
 # Directory where the config file is located on your local system
