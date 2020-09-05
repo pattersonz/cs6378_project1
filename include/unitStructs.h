@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define ORIGIN_PORT 1000
+#define ORIGIN_PORT 1024
 typedef unsigned char byte;
 typedef unsigned short us;
 typedef struct proc

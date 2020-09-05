@@ -4,13 +4,13 @@
 netid=zjp170130
 
 # Root directory of your project
-PROJDIR=/people/cs/s/zjp170130/cs6378_project1
+PROJDIR=/people/cs/z/zjp170130/cs6378_project1
 
 # Directory where the config file is located on your local system
 CONFIGLOCAL=config.txt
 
 # Directory your java classes are in
-BINDIR=$PROJDIR/bin/unit/
+BINDIR=$PROJDIR/build/unit/
 
 # Your main project class
 PROG=unit
