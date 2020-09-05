@@ -21,6 +21,7 @@ int main()
 
 void *contactOrigin(void* ptr)
 {
+  printf("start Thread\n");
   int server_fd, new_socket, valread; 
   struct sockaddr_in address; 
   int opt = 1; 
@@ -62,11 +63,16 @@ void *contactOrigin(void* ptr)
   { 
 	perror("accept"); 
     return (void*)-1; 
-  } 
+  }
+  
+  printf("read msg\n");
   valread = read( new_socket , buf, 1024);
+  printf("complete\n");
   OMSG o;
   deserialize_OMSG(buf,&o);
   serialize_u_short(buf,o.id);
+  printf("send msg\n");
   send(new_socket , buf , 1024, 0 );
+  printf("complete\n");
   return 0; 
 }
