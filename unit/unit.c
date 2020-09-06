@@ -26,17 +26,15 @@ static pthread_mutex_t *vecLock;
 
 void *contactOrigin(void* ptr);
 void *recMsg(void* ptr);
-void handleMsg(int sock);
+void *handleMsg(void* ptr);
 void *sendMsg(void* ptr);
+
 int main()
 {
   vec = NULL;
-  curRound = mmap(NULL, sizeof *curRound, PROT_READ | PROT_WRITE, 
-		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  vecLock = mmap(NULL, sizeof *vecLock, PROT_READ | PROT_WRITE, 
-		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  vecLock = mmap(NULL, sizeof **vec, PROT_READ | PROT_WRITE, 
-		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  curRound = (us*)malloc(sizeof(us));
+  vecLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+  vec = (VEC_ECC**)malloc(sizeof(VEC_ECC*));
 
   pthread_t originThread;
   pthread_create(&originThread, NULL, &contactOrigin, NULL);
@@ -227,6 +225,10 @@ void *recMsg(void* ptr)
 	perror("listen"); 
     return (void*)-1; 
   }
+  VEC_THREAD *vtHead, *vtBack;
+  vtHead = NULL;
+  vtBack = NULL;
+  int* sk;
   while (1)
   {
 	new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen); 
@@ -235,23 +237,35 @@ void *recMsg(void* ptr)
 	  perror("new socket error"); 
 	  return (void*)-1; 
 	}
-	int pid = fork();
-	pid = fork();
-	if (pid < 0)
+	sk = (int*)malloc(sizeof(int));
+	*sk = new_socket;
+	if (vtHead == NULL)
 	{
-	  perror("ERROR on fork");
+	  vtHead = (VEC_THREAD *)malloc(sizeof(VEC_THREAD));
+	  vtBack = vtHead;
+	  vtBack->next = NULL;
 	}
-	if (pid == 0)  {
-	  close(server_fd);
-	  handleMsg(new_socket);
-	  exit(0);
+	else
+	{
+	  vtBack->next = (VEC_THREAD *)malloc(sizeof(VEC_THREAD));
+	  vtBack = vtBack->next;
+	  vtBack->next = NULL;
 	}
-	else close(new_socket);
+	pthread_create(&(vtBack->data), NULL, &handleMsg, (void*)sk);
+  }
+  while (vtHead != NULL)
+  {
+	pthread_join(vtHead->data, NULL);
+	VEC_THREAD *t;
+	t = vtHead;
+	vtHead = vtHead->next;
+	free(t);
   }
 }
 
-void handleMsg(int sock)
+void *handleMsg(void* ptr)
 {
+  int sock = *((int *) ptr);
   byte buf[1024];
   read(sock, buf, 1024);
   us r;
@@ -279,7 +293,7 @@ void handleMsg(int sock)
 	fillWithRound(*vec, ids, *curRound - 1);
 	pthread_mutex_unlock(vecLock);
 
-}
+  }
   UMSG u;
   u.count = count;
   u.ids = ids;

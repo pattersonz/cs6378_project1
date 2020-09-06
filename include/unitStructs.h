@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #define ORIGIN_PORT 1024
 typedef unsigned char byte;
 typedef unsigned short us;
@@ -47,6 +48,12 @@ typedef struct vector_eccen
   us round;
   struct vector_eccen *next;
 } VEC_ECC;
+
+typedef struct vector_pthread
+{
+  pthread_t data;
+  struct vector_pthread *next;
+} VEC_THREAD;
 
 
 void printProcs(unsigned count, PROC* p)
