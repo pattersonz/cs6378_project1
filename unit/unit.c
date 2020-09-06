@@ -251,7 +251,7 @@ void handleMsg(int sock)
   //we need to wait until the round matches our own
   //however, if foundNum == N, then rounds stop increasing
   //and we accept anyways.
-  printf("MsgGot!:\n");
+  printf("MsgGot!%d:%d %d:%d\n",r,curRound, foundNum, N);
   fflush(stdout);
   while (r > curRound && foundNum < N )
 	;
