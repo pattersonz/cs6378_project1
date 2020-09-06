@@ -154,13 +154,11 @@ void *sendMsg(void *ptr)
     printf("\nInvalid address \"%s\" Address not supported \n",ip);
     return (void*)-1;
   }
-
-  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-  {
-    printf("\nConnection Failed \n");
-    return (void*)-1;
-  }
-  
+  int connected = -1;
+  //attempt to connect until connection is made
+  while (connected < 0)
+  	connected = connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    
   serialize_u_short(buf,curRound);
   send(sock , buf , 1024, 0 );
   printf("MsgSent!:%s\n",n->name);
