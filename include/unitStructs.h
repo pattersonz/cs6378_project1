@@ -67,7 +67,7 @@ void printOMSG(OMSG o)
   unsigned i;
   for (i = 0; i < o.nCount; ++i)
   {
-	printf("\tn:%d name:%s port:%d", i, o.neighbors[i], o.ports[i]);
+	printf("\tn:%d name:%s port:%d\n", i, o.neighbors[i], o.ports[i]);
   }
   fflush(stdout);
 }
