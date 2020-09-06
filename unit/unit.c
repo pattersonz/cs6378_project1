@@ -256,9 +256,9 @@ void handleMsg(int sock)
   else
   {
 	pthread_mutex_lock(&vecLock);
-	roundCount(vec, curRound, &count);
+	roundCount(vec, curRound - 1, &count);
 	ids = (us*)malloc(count*sizeof(us));
-	fillWithRound(vec, ids, curRound);
+	fillWithRound(vec, ids, curRound - 1);
 	pthread_mutex_unlock(&vecLock);
   }
   UMSG u;
