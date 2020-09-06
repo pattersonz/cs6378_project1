@@ -61,6 +61,17 @@ void printProcs(unsigned count, PROC* p)
   }
 }
 
+void printOMSG(OMSG o)
+{
+  printf("id:%d port:%d neighbors:%d, N:%d\n", o.id, o.port, o.nCount, o.totalProc);
+  unsigned i;
+  for (i = 0; i < o.nCount; ++i)
+  {
+	printf("\tn:%d name:%s port:%d", i, o.neighbors[i], o.ports[i]);
+  }
+  fflush(stdout);
+}
+
 byte *serialize_u_short(byte *buf, us v)
 {
   buf[0] = v >> 8;

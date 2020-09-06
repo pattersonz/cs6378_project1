@@ -84,6 +84,7 @@ void *contactOrigin(void* ptr)
   valread = read( new_socket , buf, 1024);
   OMSG o;
   deserialize_OMSG(buf,&o);
+  printOMSG(o);
   nCount = o.nCount;
   ns = (NEIGHBOR*)malloc(nCount*sizeof(NEIGHBOR));
   unsigned i;
