@@ -104,6 +104,8 @@ void *contactOrigin(void* ptr)
   pthread_create(&recT, NULL, &recMsg, NULL);
   while (foundNum < N)
   {
+	printf("Round:%d\n",curRound);
+	fflush(stdout);
 	pthread_t *threads;
 	threads = (pthread_t*)malloc(nCount*sizeof(pthread_t));
 	for (i = 0; i < nCount; ++i)
@@ -154,10 +156,14 @@ void *sendMsg(void *ptr)
     printf("\nConnection Failed \n");
     return (void*)-1;
   }
+  
   serialize_u_short(buf,curRound);
   send(sock , buf , 1024, 0 );
- 
+  printf("MsgSent!:%s\n",n->name);
+	fflush(stdout);
   read( sock , buf, 1024);
+  printf("MsgRec!:%s\n",n->name);
+	fflush(stdout);
   UMSG res;
   deserialize_UMSG(buf,&res);
 
@@ -243,6 +249,8 @@ void handleMsg(int sock)
   //we need to wait until the round matches our own
   //however, if foundNum == N, then rounds stop increasing
   //and we accept anyways.
+  printf("MsgGot!:\n");
+  fflush(stdout);
   while (r > curRound && foundNum < N )
 	;
   us *ids;
@@ -265,5 +273,8 @@ void handleMsg(int sock)
   u.count = count;
   u.ids = ids;
   serialize_UMSG(buf,u);
+  printf("MsgResponding!\n");
+  fflush(stdout);
+  send(sock , buf , 1024, 0 );
   free(ids);
 }
