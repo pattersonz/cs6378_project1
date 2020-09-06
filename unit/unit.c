@@ -214,7 +214,7 @@ void *recMsg(void* ptr)
   while (1)
   {
 	new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen); 
-	if (new_socket)
+	if (new_socket < 0)
 	{ 
 	  perror("new socket error"); 
 	  return (void*)-1; 
