@@ -29,6 +29,11 @@ int main()
 	pthread_create(&(threads[i]), NULL, &contactProc, (void*)&procs[i]);
   for (i = 0; i < totalProcs; ++i)
 	pthread_join(threads[i],NULL);
+  for (i = 0; i < totalProcs; ++i)
+  {
+	printf("P%d results:\n",i);
+	printECC(eccs[i]);
+  }
   return 0;
 }
 

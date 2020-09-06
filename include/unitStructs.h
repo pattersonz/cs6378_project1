@@ -319,7 +319,32 @@ void fillWithRound(VEC_ECC* v, us* ids, us r)
 	}
 	t = t->next;
   }
-} 
+}
+
+void printECC(VEC_ECC* v)
+{
+  VEC_ECC *t = v;
+  us max = 0;
+  while (t != NULL)
+  {
+	if (t->round > max)
+	  max = t->round;
+	t = t->next;
+  }
+  us i;
+  for (i = 0; i <= max; ++i)
+  {
+	printf("\tR:%d\n\t\t",i);
+	t = v;
+	while (t != NULL)
+	{
+	  if (t->round == i)
+		printf("%d ",t->id);
+	  t = t->next;
+	}
+	printf("\n");
+  }
+}
 
 // Returns host information corresponding to host name 
 void checkHostEntry(struct hostent * hostentry) 

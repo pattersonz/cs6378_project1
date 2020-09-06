@@ -120,6 +120,7 @@ void *contactOrigin(void* ptr)
 	for (i = 0; i < nCount; ++i)
 	  pthread_join(threads[i],NULL);
 	(*curRound)++;
+	printECC(*vec);
   }
   printf("Complete:%d\n",*curRound);
   fflush(stdout);
