@@ -114,6 +114,9 @@ void *contactOrigin(void* ptr)
 	  pthread_join(threads[i],NULL);
 	curRound++;
   }
+  printf("Complete:%d\n",curRound);
+  fflush(stdout);
+  
   serialize_VEC_ECC(buf,vec, N);
   send(new_socket , buf , 1024, 0 );
   pthread_join(recT, NULL);
