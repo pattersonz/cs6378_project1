@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <netdb.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -18,10 +19,10 @@ us thisPort;
 NEIGHBOR* ns;
 us foundNum;
 us N;
-us curRound;
+static us *curRound;
 
-VEC_ECC* vec;
-pthread_mutex_t vecLock; 
+static VEC_ECC** vec;
+static pthread_mutex_t *vecLock; 
 
 void *contactOrigin(void* ptr);
 void *recMsg(void* ptr);
@@ -30,6 +31,13 @@ void *sendMsg(void* ptr);
 int main()
 {
   vec = NULL;
+  curRound = mmap(NULL, sizeof *curRound, PROT_READ | PROT_WRITE, 
+		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  vecLock = mmap(NULL, sizeof *vecLock, PROT_READ | PROT_WRITE, 
+		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  vecLock = mmap(NULL, sizeof **vec, PROT_READ | PROT_WRITE, 
+		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
   pthread_t originThread;
   pthread_create(&originThread, NULL, &contactOrigin, NULL);
   pthread_join(originThread, NULL);
@@ -97,7 +105,7 @@ void *contactOrigin(void* ptr)
   thisId = o.id;
   N = o.totalProc - 1;
   foundNum = 0;
-  curRound = 0;
+  *curRound = 0;
   
   //find eccentricity
   //set up nCount senders and a reciever
@@ -105,7 +113,7 @@ void *contactOrigin(void* ptr)
   pthread_create(&recT, NULL, &recMsg, NULL);
   while (foundNum < N)
   {
-	printf("Round:%d\n",curRound);
+	printf("Round:%d\n",*curRound);
 	fflush(stdout);
 	pthread_t *threads;
 	threads = (pthread_t*)malloc(nCount*sizeof(pthread_t));
@@ -113,12 +121,12 @@ void *contactOrigin(void* ptr)
 	  pthread_create(&(threads[i]), NULL, &sendMsg, (void*)&ns[i]);
 	for (i = 0; i < nCount; ++i)
 	  pthread_join(threads[i],NULL);
-	curRound++;
+	(*curRound)++;
   }
-  printf("Complete:%d\n",curRound);
+  printf("Complete:%d\n",*curRound);
   fflush(stdout);
   
-  serialize_VEC_ECC(buf,vec, N);
+  serialize_VEC_ECC(buf,*vec, N);
   send(new_socket , buf , 1024, 0 );
   pthread_join(recT, NULL);
   return 0; 
@@ -159,7 +167,7 @@ void *sendMsg(void *ptr)
   while (connected < 0)
   	connected = connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
     
-  serialize_u_short(buf,curRound);
+  serialize_u_short(buf,*curRound);
   send(sock , buf , 1024, 0 );
   printf("MsgSent!:%s\n",n->name);
 	fflush(stdout);
@@ -169,14 +177,14 @@ void *sendMsg(void *ptr)
   UMSG res;
   deserialize_UMSG(buf,&res);
 
-  pthread_mutex_lock(&vecLock);
+  pthread_mutex_lock(vecLock);
   for (i = 0; i < res.count;++i)
-	if (res.ids[i] != thisId && isIn(vec, res.ids[i]) == 0)
+	if (res.ids[i] != thisId && isIn(*vec, res.ids[i]) == 0)
 	{
-	  put(&vec, res.ids[i], curRound);
+	  put(vec, res.ids[i], *curRound);
 	  foundNum++;
 	}
-  pthread_mutex_unlock(&vecLock);
+  pthread_mutex_unlock(vecLock);
   
   return (void*)0;
 }
@@ -251,13 +259,13 @@ void handleMsg(int sock)
   //we need to wait until the round matches our own
   //however, if foundNum == N, then rounds stop increasing
   //and we accept anyways.
-  printf("MsgGot!%d:%d %d:%d\n",r,curRound, foundNum, N);
+  printf("MsgGot!%d:%d %d:%d\n",r,*curRound, foundNum, N);
   fflush(stdout);
-  while (r > curRound && foundNum < N )
+  while (r > *curRound && foundNum < N )
 	;
   us *ids;
   us count;
-  if (curRound == 0)
+  if (*curRound == 0)
   {
 	count = 1;
 	ids = (us*)malloc(sizeof(us));
@@ -265,12 +273,13 @@ void handleMsg(int sock)
   }
   else
   {
-	pthread_mutex_lock(&vecLock);
-	roundCount(vec, curRound - 1, &count);
+    pthread_mutex_lock(vecLock);
+	roundCount(*vec, *curRound - 1, &count);
 	ids = (us*)malloc(count*sizeof(us));
-	fillWithRound(vec, ids, curRound - 1);
-	pthread_mutex_unlock(&vecLock);
-  }
+	fillWithRound(*vec, ids, *curRound - 1);
+	pthread_mutex_unlock(vecLock);
+
+}
   UMSG u;
   u.count = count;
   u.ids = ids;
