@@ -216,7 +216,7 @@ void *recMsg(void* ptr)
 	perror("bind failed"); 
 	return (void*)-1;
   } 
-  if (listen(server_fd, nCount) < 0) 
+  if (listen(server_fd, 5) < 0) 
   { 
 	perror("listen"); 
     return (void*)-1; 
