@@ -79,11 +79,11 @@ void *contactProc(void* ptr)
 	printf("\nInvalid address \"%s\" Address not supported \n",ip); 
 	return (void*)-1; 
   } 
-   
-  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+
+  int ress = connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+  while (ress < 0) 
   { 
-	printf("\nConnection Failed \n"); 
-	return (void*)-1; 
+	printf("\nConnection Failed retrying\n"); 
   }
   
   //send neighbors

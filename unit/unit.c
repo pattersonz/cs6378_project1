@@ -229,7 +229,6 @@ void *recMsg(void* ptr)
   VEC_THREAD *vtHead, *vtBack;
   vtHead = NULL;
   vtBack = NULL;
-  int* sk;
   while (1)
   {
 	new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen); 
@@ -238,8 +237,6 @@ void *recMsg(void* ptr)
 	  perror("new socket error"); 
 	  return (void*)-1; 
 	}
-	sk = (int*)malloc(sizeof(int));
-	*sk = new_socket;
 	if (vtHead == NULL)
 	{
 	  vtHead = (VEC_THREAD *)malloc(sizeof(VEC_THREAD));
@@ -252,7 +249,8 @@ void *recMsg(void* ptr)
 	  vtBack = vtBack->next;
 	  vtBack->next = NULL;
 	}
-	pthread_create(&(vtBack->data), NULL, &handleMsg, (void*)sk);
+	vtBack->socket = new_socket;
+	pthread_create(&(vtBack->data), NULL, &handleMsg, (void*)&(vtBack->socket));
   }
   while (vtHead != NULL)
   {

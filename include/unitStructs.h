@@ -52,6 +52,7 @@ typedef struct vector_eccen
 typedef struct vector_pthread
 {
   pthread_t data;
+  int socket;
   struct vector_pthread *next;
 } VEC_THREAD;
 
