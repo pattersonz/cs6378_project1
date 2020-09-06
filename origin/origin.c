@@ -14,14 +14,14 @@
 
 PROC *procs;
 unsigned totalProcs = 0;
-
+VEC_ECC **eccs;
 void getProcs();
 void *contactProc(void* ptr); 
-void checkHostEntry(struct hostent * hostentry);
 void checkIPbuffer(char *IPbuffer) ;  
 int main()
 {
   getProcs();
+  eccs = (VEC_ECC**)malloc(totalProcs*sizeof(VEC_ECC*));
   pthread_t *threads;
   threads = (pthread_t*)malloc(totalProcs*sizeof(pthread_t));
   unsigned i;
@@ -75,20 +75,20 @@ void *contactProc(void* ptr)
 	return (void*)-1; 
   } 
    
-  printf("connect p:%d\n",p->id);
   if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
   { 
 	printf("\nConnection Failed \n"); 
 	return (void*)-1; 
   }
   
-  printf("connected p:",p->id);
   //send neighbors
   OMSG o;
   o.id = p->id;
+  o.port = p->port;
   o.nCount= p->nCount;
   o.neighbors = (char**)malloc(o.nCount*sizeof(char*));
   o.ports = (us*)malloc(o.nCount*sizeof(us));
+  o.totalProc = totalProcs;
   for (i = 0; i < o.nCount; ++i)
   {
 	us id = p->id;
@@ -97,17 +97,13 @@ void *contactProc(void* ptr)
   }
   serialize_OMSG(buf,o);
   
-  printf("sending p:%d\n",p->id);
   send(sock , buf , 1024, 0 );
   free(o.neighbors);
   free(o.ports);
   //wait for results
   read( sock , buf, 1024);
-  printf("read p:%d\n",p->id);
-  us res;
-  deserialize_u_short(buf,&res);
+  deserialize_VEC_ECC(buf,&(eccs[o.id]));
   //print results
-  printf("%d:%d\n",p->id,res);
   return (void*)0; 
 }
 
@@ -255,16 +251,6 @@ void getProcs()
   fclose(file);
 }
 
-// Returns host information corresponding to host name 
-void checkHostEntry(struct hostent * hostentry) 
-{ 
-    if (hostentry == NULL) 
-    { 
-        perror("gethostbyname"); 
-        exit(1); 
-    } 
-} 
-  
 // Converts space-delimited IPv4 addresses 
 // to dotted-decimal format 
 void checkIPbuffer(char *IPbuffer) 
