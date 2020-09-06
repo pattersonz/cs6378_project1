@@ -91,7 +91,7 @@ void *contactProc(void* ptr)
   o.totalProc = totalProcs;
   for (i = 0; i < o.nCount; ++i)
   {
-	us id = p->id;
+	us id = p->neighbors[i];
 	o.neighbors[i] = procs[id].mach;
 	o.ports[i] = procs[id].port;
   }
