@@ -27,7 +27,7 @@ cat $CONFIGLOCAL | sed -e "s/#.*//" | sed -e "/^\s*$/d" |
     	p=$( echo $line | awk '{ print $1 }' )
         host=$( echo $line | awk '{ print $2 }' )
 	
-	gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host echo $BINDIR$PROG; $BINDIR$PROG; exec bash" &
+	gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host echo $BINDIR$PROG; gdb -ex run $BINDIR$PROG; exec bash" &
 
         n=$(( n + 1 ))
     done

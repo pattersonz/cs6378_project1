@@ -15,6 +15,7 @@
 PROC *procs;
 unsigned totalProcs = 0;
 VEC_ECC **eccs;
+pthread_mutex_t procLoc;
 void getProcs();
 void *contactProc(void* ptr); 
 void checkIPbuffer(char *IPbuffer) ;  
@@ -40,7 +41,9 @@ int main()
 void *contactProc(void* ptr)
 {
   PROC *p = (PROC*)ptr;
+  pthread_mutex_lock(&procLoc);
   printProcs(1,p);
+  pthread_mutex_unlock(&procLoc);
   //setup socket connection
   int sock = 0; 
   struct sockaddr_in serv_addr; 
@@ -62,7 +65,7 @@ void *contactProc(void* ptr)
   unsigned i;
   memcpy(adr,p->mach,4);
   
-  char *ip; 
+  char *ip = NULL; 
   struct hostent *adrTrue; 
 
   // To retrieve host information 
@@ -70,9 +73,10 @@ void *contactProc(void* ptr)
   checkHostEntry(adrTrue); 
   
   // To convert an Internet network 
-  // address into ASCII string 
-  ip = inet_ntoa(*((struct in_addr*) 
-						 adrTrue->h_addr_list[0])); 
+  // address into ASCII string
+  while(ip == NULL)
+	ip = inet_ntoa(*((struct in_addr*) 
+					 adrTrue->h_addr_list[0])); 
   
   if(inet_pton(AF_INET, ip, &serv_addr.sin_addr)<=0)  
   { 
@@ -83,7 +87,8 @@ void *contactProc(void* ptr)
   int ress = connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   while (ress < 0) 
   { 
-	printf("\nConnection Failed retrying\n"); 
+	printf("\nConnection Failed retrying\n");
+	ress = connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   }
   
   //send neighbors
@@ -174,7 +179,14 @@ void getProcs()
 	  //get neighbors
 	  else
 	  {
-		if (c == ' ' && curN != -1)
+		
+		if (c >= '0' && c <= '9')
+		{
+		  if (curN < 0)
+			curN = 0;
+		  curN = curN*10 + (c - '0');
+		}
+		else if (curN != -1)
 		{
 		  if (startN == NULL)
 		  {
@@ -191,12 +203,6 @@ void getProcs()
 			endN->next = NULL;
 		  }
 		  curN = -1;
-		}
-		if (c >= '0' && c <= '9')
-		{
-		  if (curN < 0)
-			curN = 0;
-		  curN = curN*10 + (c - '0');
 		}
 	  }
 
