@@ -22,6 +22,10 @@ us foundNum;
 us N;
 us curRound;
 
+
+us responses;
+pthread_mutex_t resLock;
+
 VEC vec;
 pthread_mutex_t vecLock; 
 
@@ -106,21 +110,34 @@ void *contactOrigin(void* ptr)
   //set up nCount senders and a reciever
   pthread_t recT;
   pthread_create(&recT, NULL, &recMsg, NULL);
+
+  pthread_t *threads;
+  threads = (pthread_t*)malloc(nCount*sizeof(pthread_t));
+  responses = nCount;
+  for (i = 0; i < nCount; ++i)
+	pthread_create(&(threads[i]), NULL, &sendMsg, (void*)&ns[i]);
+
   while (foundNum < N)
   {
 	printf("Round:%d\n",curRound);
 	fflush(stdout);
-	pthread_t *threads;
-	threads = (pthread_t*)malloc(nCount*sizeof(pthread_t));
-	for (i = 0; i < nCount; ++i)
-	  pthread_create(&(threads[i]), NULL, &sendMsg, (void*)&ns[i]);
-	for (i = 0; i < nCount; ++i)
-	  pthread_join(threads[i],NULL);
+	while(true)
+	{
+	  pthread_mutex_lock(&resLock);
+	  if (responses == 0)
+		break;
+	  pthread_mutex_unlock(&resLock);
+  	}
+	
 	curRound++;
 	pthread_mutex_lock(&vecLock);
 	printECC(&vec);
 	pthread_mutex_unlock(&vecLock);
+	responses = nCount;
+	pthread_mutex_unlock(&resLock);
   }
+  for (i = 0; i < nCount; ++i)
+	  pthread_join(threads[i],NULL);
   printf("Complete:%d\n",curRound);
   fflush(stdout);
   
@@ -176,32 +193,36 @@ void *sendMsg(void *ptr)
       ress = connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
     }
-  
-  serialize_u_short(buf,curRound);
-  send(sock , buf , 1024, 0 );
-  printf("MsgSent!:%s\n",n->name);
-  fflush(stdout);
-  read( sock , buf, 1024);
-  printf("MsgRec!:%s\n",n->name);
-  fflush(stdout);
-  close(sock);
-  UMSG res;
-  deserialize_UMSG(buf,&res);
-
-  pthread_mutex_lock(&vecLock);
-  for (i = 0; i < res.count;++i)
+  while (foundNum < N)
   {
-	if (res.ids[i] != thisId && isIn(&vec, (void*)&res.ids[i], EccIDEq) == -1)
+	serialize_u_short(buf,curRound);
+	send(sock , buf , 1024, 0 );
+	printf("MsgSent!:%s\n",n->name);
+	fflush(stdout);
+	read( sock , buf, 1024);
+	printf("MsgRec!:%s\n",n->name);
+	fflush(stdout);
+	pthread_mutex_lock(&resLock);
+	responses--;
+	pthread_mutex_unlock(&resLock);
+	UMSG res;
+	deserialize_UMSG(buf,&res);
+
+	pthread_mutex_lock(&vecLock);
+	for (i = 0; i < res.count;++i)
 	{
-	  ECC* e = (ECC*)malloc(sizeof(ECC));
-	  e->id = res.ids[i];
-	  e->round = curRound;
-	  putBack(&vec, e);
-	  foundNum++;
+	  if (res.ids[i] != thisId && isIn(&vec, (void*)&res.ids[i], EccIDEq) == -1)
+	  {
+		ECC* e = (ECC*)malloc(sizeof(ECC));
+		e->id = res.ids[i];
+		e->round = curRound;
+		putBack(&vec, e);
+		foundNum++;
+	  }
 	}
+	pthread_mutex_unlock(&vecLock);
   }
-  pthread_mutex_unlock(&vecLock);
-  
+  close(sock);
   return (void*)0;
 }
 
@@ -272,40 +293,43 @@ void *recMsg(void* ptr)
 
 void *handleMsg(void* ptr)
 {
-  int sock = *((int *) ptr);
-  byte buf[1024];
-  read(sock, buf, 1024);
-  us r;
-  deserialize_u_short(buf,&r);
-  //we need to wait until the round matches our own
-  //however, if foundNum == N, then rounds stop increasing
-  //and we accept anyways.
-  printf("MsgGot!%d:%d %d:%d t:%ld\n",r,curRound, foundNum, N, pthread_self());
-  fflush(stdout);
-  while (r > curRound && foundNum < N )
-	;
-  us *ids;
-  us count;
-  if (r == 0)
+  while(1)
   {
-	count = 1;
-	ids = (us*)malloc(sizeof(us));
-	ids[0] = thisId;
+	int sock = *((int *) ptr);
+	byte buf[1024];
+	read(sock, buf, 1024);
+	us r;
+	deserialize_u_short(buf,&r);
+	//we need to wait until the round matches our own
+	//however, if foundNum == N, then rounds stop increasing
+	//and we accept anyways.
+	printf("MsgGot!%d:%d %d:%d t:%ld\n",r,curRound, foundNum, N, pthread_self());
+	fflush(stdout);
+	while (r > curRound && foundNum < N )
+	  ;
+	us *ids;
+	us count;
+	if (r == 0)
+	{
+	  count = 1;
+	  ids = (us*)malloc(sizeof(us));
+	  ids[0] = thisId;
+	}
+	else
+	{
+	  pthread_mutex_lock(&vecLock);
+	  roundCount(&vec, r - 1, &count);
+	  ids = (us*)malloc(count*sizeof(us));
+	  fillWithRound(&vec, ids, r - 1);
+	  pthread_mutex_unlock(&vecLock);
+	}
+	UMSG u;
+	u.count = count;
+	u.ids = ids;
+	serialize_UMSG(buf,u);
+	printf("MsgResponding!%d:%d %d:%d t:%ld\n",r,curRound, foundNum, N, pthread_self());
+	fflush(stdout);
+	send(sock , buf , 1024, 0 );
+	free(ids);
   }
-  else
-  {
-    pthread_mutex_lock(&vecLock);
-    roundCount(&vec, r - 1, &count);
-    ids = (us*)malloc(count*sizeof(us));
-    fillWithRound(&vec, ids, r - 1);
-    pthread_mutex_unlock(&vecLock);
-  }
-  UMSG u;
-  u.count = count;
-  u.ids = ids;
-  serialize_UMSG(buf,u);
-  printf("MsgResponding!%d:%d %d:%d t:%ld\n",r,curRound, foundNum, N, pthread_self());
-  fflush(stdout);
-  send(sock , buf , 1024, 0 );
-  free(ids);
 }
