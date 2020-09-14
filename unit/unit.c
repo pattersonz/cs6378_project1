@@ -132,12 +132,13 @@ void *contactOrigin(void* ptr)
 	  pthread_mutex_unlock(&resLock);
   	}
 	curRound++;
+	responses = nCount;
+	pthread_mutex_unlock(&resLock);
+	
 	pthread_mutex_lock(&vecLock);
 	printECC(&vec);
 	pthread_mutex_unlock(&vecLock);
 	
-	responses = nCount;
-	pthread_mutex_unlock(&resLock);
 	pthread_barrier_wait(&resBar);
   }
   for (i = 0; i < nCount; ++i)
@@ -203,7 +204,12 @@ void *sendMsg(void *ptr)
 	send(sock , buf , 1024, 0 );
 	printf("MsgSent!:%s\n",n->name);
 	fflush(stdout);
-	read( sock , buf, 1024);
+	
+	int readTag = read( sock , buf, 1024);
+	if (readTag <= 0)
+	  break;
+      
+	
 	printf("MsgRec!:%s\n",n->name);
 	fflush(stdout);
 	UMSG res;
