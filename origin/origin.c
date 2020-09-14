@@ -23,7 +23,6 @@ void checkIPbuffer(char *IPbuffer) ;
 int main()
 {
   getProcs();
-  printf("here\n");
   fflush(stdout);
   eccs = (VEC*)malloc(totalProcs*sizeof(VEC));
   pthread_t *threads;
