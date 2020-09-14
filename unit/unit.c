@@ -25,6 +25,7 @@ us curRound;
 
 us responses;
 pthread_mutex_t resLock;
+pthread_barrier_t resBar;
 
 VEC vec;
 pthread_mutex_t vecLock; 
@@ -114,6 +115,8 @@ void *contactOrigin(void* ptr)
   pthread_t *threads;
   threads = (pthread_t*)malloc(nCount*sizeof(pthread_t));
   responses = nCount;
+  pthread_barrier_init(&resBar, NULL, nCount+1);
+  
   for (i = 0; i < nCount; ++i)
 	pthread_create(&(threads[i]), NULL, &sendMsg, (void*)&ns[i]);
 
@@ -128,13 +131,14 @@ void *contactOrigin(void* ptr)
 		break;
 	  pthread_mutex_unlock(&resLock);
   	}
-	
 	curRound++;
 	pthread_mutex_lock(&vecLock);
 	printECC(&vec);
 	pthread_mutex_unlock(&vecLock);
+	
 	responses = nCount;
 	pthread_mutex_unlock(&resLock);
+	pthread_barrier_wait(&resBar);
   }
   for (i = 0; i < nCount; ++i)
 	  pthread_join(threads[i],NULL);
@@ -202,12 +206,8 @@ void *sendMsg(void *ptr)
 	read( sock , buf, 1024);
 	printf("MsgRec!:%s\n",n->name);
 	fflush(stdout);
-	pthread_mutex_lock(&resLock);
-	responses--;
-	pthread_mutex_unlock(&resLock);
 	UMSG res;
 	deserialize_UMSG(buf,&res);
-
 	pthread_mutex_lock(&vecLock);
 	for (i = 0; i < res.count;++i)
 	{
@@ -221,6 +221,11 @@ void *sendMsg(void *ptr)
 	  }
 	}
 	pthread_mutex_unlock(&vecLock);
+	pthread_mutex_lock(&resLock);
+	responses--;
+	pthread_mutex_unlock(&resLock);
+
+	pthread_barrier_wait(&resBar);
   }
   close(sock);
   return (void*)0;
@@ -285,7 +290,6 @@ void *recMsg(void* ptr)
 	THREADDATA* td;
 	td = (THREADDATA*)get(&vt,k);
 	pthread_join(td->data, NULL);
-	close(td->socket);
 	free(td);
   }
   clear(&vt);
@@ -297,7 +301,10 @@ void *handleMsg(void* ptr)
     {
       int sock = *((int *) ptr);
       byte buf[1024];
-      read(sock, buf, 1024);
+      int readTag;
+      readTag = read(sock, buf, 1024);
+      if (readTag <= 0)
+	break;
       us r;
       deserialize_u_short(buf,&r);
       //we need to wait until the round matches our own
