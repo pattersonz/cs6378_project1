@@ -1,6 +1,9 @@
+#ifndef UNITSTRUCTS_H
+#define UNITSTRUCTS_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "vecLib.h"
 #define ORIGIN_PORT 1024
 typedef unsigned char byte;
 typedef unsigned short us;
@@ -36,25 +39,22 @@ typedef struct neighbor_pair
 } NEIGHBOR;
 
 
-typedef struct vector_int
-{
-  unsigned data;
-  struct vector_int *next;
-} VEC_INT;
-
-typedef struct vector_eccen
+typedef struct eccen
 {
   us id;
   us round;
-  struct vector_eccen *next;
-} VEC_ECC;
+} ECC;
 
-typedef struct vector_pthread
+int EccIDEq(void* a, void* b)
+{
+  return ((ECC*)(b))->id == *((unsigned short*)a);
+}
+
+typedef struct pthreadData
 {
   pthread_t data;
   int socket;
-  struct vector_pthread *next;
-} VEC_THREAD;
+} THREADDATA;
 
 
 void printProcs(unsigned count, PROC* p)
@@ -151,14 +151,14 @@ byte *serialize_UMSG(byte* buf, UMSG u)
   return buf;
 }
 
-byte *serialize_VEC_ECC(byte* buf, VEC_ECC *v, us size)
+byte *serialize_VEC_ECC(byte* buf, VEC *v)
 {
-  buf = serialize_u_short(buf, size);
-  VEC_ECC *temp = v;
+  buf = serialize_u_short(buf, v->size);
+  VECDATA *temp = v->container;
   while(temp != NULL)
   {
-	buf = serialize_u_short(buf, temp->id);
-	buf = serialize_u_short(buf, temp->round);
+	buf = serialize_u_short(buf, ((ECC*)(temp->data))->id);
+	buf = serialize_u_short(buf, ((ECC*)(temp->data))->round);
 	temp = temp->next;
   }
   return buf;
@@ -237,112 +237,56 @@ byte *deserialize_UMSG(byte* buf, UMSG *u)
   return buf;
 }
 
-byte *deserialize_VEC_ECC(byte* buf, VEC_ECC **v)
+byte *deserialize_VEC_ECC(byte* buf, VEC *v)
 {
   us s;
   buf = deserialize_u_short(buf, &s);
   if (s == 0)
 	return buf;
-  *v = (VEC_ECC*)malloc(sizeof(VEC_ECC));
-  buf = deserialize_u_short(buf, &((*v)->id));
-  buf = deserialize_u_short(buf, &((*v)->round));
-  VEC_ECC* temp = *v;
+  init(v);
   us i;
-  for (i = 1; i < s; ++i)
+  for (i = 0; i < s; ++i)
   {
-	temp->next = (VEC_ECC*)malloc(sizeof(VEC_ECC));
-	temp = temp->next;
-	buf = deserialize_u_short(buf, &temp->id);
-	buf = deserialize_u_short(buf, &temp->round);
-	temp->next = NULL;
+	ECC* e = (ECC*)malloc(sizeof(ECC));
+	buf = deserialize_u_short(buf, &e->id);
+	buf = deserialize_u_short(buf, &e->round);
+	putBack(v,(void*)e);
   }
   return buf;
 }
 
-
-
-us isIn(VEC_ECC* v, us id)
+void roundCount(VEC* vec, us r, us*c)
 {
-  VEC_ECC *temp = v;
-  while (temp != NULL)
-  {
-	if (id == temp->id)
-	  return 1;
-	temp = temp->next;
-  }
-  return 0;
-}
-
-void put(VEC_ECC** v, us id, us round)
-{
-  if (*v == NULL)
-  {
-	(*v) = (VEC_ECC*)malloc(sizeof(VEC_ECC));
-	(*v)->id = id;
-	(*v)->round = round;
-	(*v)->next = NULL;
-  }
-  else
-  {
-	VEC_ECC* temp = (*v);
-	while (temp->next != NULL)
-	  temp = temp->next;
-	temp->next = (VEC_ECC*)malloc(sizeof(VEC_ECC));
-	temp = temp->next;
-	temp->id = id;
-	temp->round = round;
-	temp->next = NULL;
-  }
-}
-
-void roundCount(VEC_ECC* vec, us r, us*c)
-{
-  VEC_ECC* t = vec;
   *c = 0;
-  while (t != NULL)
-  {
-	if (t->round == r)
+  us i;
+  for (i = 0; i < vec->size; ++i)
+	if (((ECC*)get(vec,i))->round == r)
 	  ++(*c);
-	t = t->next;
-  }
 }
 
-void fillWithRound(VEC_ECC* v, us* ids, us r)
+void fillWithRound(VEC* v, us* ids, us r)
 {
-  VEC_ECC* t = v;
-  us c = 0;
-  while (t != NULL)
-  {
-	if (t->round == r)
+  us c = 0,i;
+  for (i = 0; i < v->size; ++i)
+	if (((ECC*)get(v,i))->round == r)
 	{
-	  ids[c] = t->id;
+	  ids[c] = ((ECC*)get(v,i))->id;
 	  ++c;
 	}
-	t = t->next;
-  }
 }
 
-void printECC(VEC_ECC* v)
+void printECC(VEC* v)
 {
-  VEC_ECC *t = v;
-  us max = 0;
-  while (t != NULL)
-  {
-	if (t->round > max)
-	  max = t->round;
-	t = t->next;
-  }
-  us i;
+  us max = 0,i,j;
+  for(i = 0; i < v->size; ++i)
+	if (((ECC*)(get(v,i)))->round > max)
+	  max = ((ECC*)(get(v,i)))->round;
   for (i = 0; i <= max; ++i)
   {
 	printf("\tR:%d\n\t\t",i);
-	t = v;
-	while (t != NULL)
-	{
-	  if (t->round == i)
-		printf("%d ",t->id);
-	  t = t->next;
-	}
+	for(j = 0; j < v->size; ++j)
+	  if (((ECC*)(get(v,j)))->round == i)
+		printf("%d ",((ECC*)(get(v,j)))->id);
 	printf("\n");
   }
 }
@@ -356,3 +300,4 @@ void checkHostEntry(struct hostent * hostentry)
         exit(1); 
     } 
 } 
+#endif

@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <resolv.h>
 #include <pthread.h>
+#include "vecLib.h"
 #include "unitStructs.h"
 
 us thisId;
@@ -21,7 +22,7 @@ us foundNum;
 us N;
 us curRound;
 
-VEC_ECC* vec;
+VEC vec;
 pthread_mutex_t vecLock; 
 
 void *contactOrigin(void* ptr);
@@ -31,7 +32,7 @@ void *sendMsg(void* ptr);
 
 int main()
 {
-  vec = NULL;
+  init(&vec);
   pthread_t originThread;
   pthread_create(&originThread, NULL, &contactOrigin, NULL);
   pthread_join(originThread, NULL);
@@ -117,14 +118,14 @@ void *contactOrigin(void* ptr)
 	  pthread_join(threads[i],NULL);
 	curRound++;
 	pthread_mutex_lock(&vecLock);
-	printECC(vec);
+	printECC(&vec);
 	pthread_mutex_unlock(&vecLock);
   }
   printf("Complete:%d\n",curRound);
   fflush(stdout);
   
   pthread_mutex_lock(&vecLock);
-  serialize_VEC_ECC(buf,vec, N);
+  serialize_VEC_ECC(buf,&vec);
   pthread_mutex_unlock(&vecLock);
   send(new_socket , buf , 1024, 0 );
   pthread_join(recT, NULL);
@@ -189,11 +190,16 @@ void *sendMsg(void *ptr)
 
   pthread_mutex_lock(&vecLock);
   for (i = 0; i < res.count;++i)
-	if (res.ids[i] != thisId && isIn(vec, res.ids[i]) == 0)
+  {
+	if (res.ids[i] != thisId && isIn(&vec, (void*)&res.ids[i], EccIDEq) == -1)
 	{
-	  put(&vec, res.ids[i], curRound);
+	  ECC* e = (ECC*)malloc(sizeof(ECC));
+	  e->id = res.ids[i];
+	  e->round = curRound;
+	  putBack(&vec, e);
 	  foundNum++;
 	}
+  }
   pthread_mutex_unlock(&vecLock);
   
   return (void*)0;
@@ -237,9 +243,7 @@ void *recMsg(void* ptr)
 	perror("listen"); 
     return (void*)-1; 
   }
-  VEC_THREAD *vtHead, *vtBack;
-  vtHead = NULL;
-  vtBack = NULL;
+  VEC vt;
   while (1)
   {
 	new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen); 
@@ -248,29 +252,22 @@ void *recMsg(void* ptr)
 	  perror("new socket error"); 
 	  return (void*)-1; 
 	}
-	if (vtHead == NULL)
-	{
-	  vtHead = (VEC_THREAD *)malloc(sizeof(VEC_THREAD));
-	  vtBack = vtHead;
-	  vtBack->next = NULL;
-	}
-	else
-	{
-	  vtBack->next = (VEC_THREAD *)malloc(sizeof(VEC_THREAD));
-	  vtBack = vtBack->next;
-	  vtBack->next = NULL;
-	}
-	vtBack->socket = new_socket;
-	pthread_create(&(vtBack->data), NULL, &handleMsg, (void*)&(vtBack->socket));
+	THREADDATA* td = (THREADDATA*)malloc(sizeof(THREADDATA));
+	td->socket = new_socket;
+	pthread_create(&(td->data), NULL, &handleMsg, (void*)&(td->socket));
+  	
+	putBack(&vt,td);
   }
-  while (vtHead != NULL)
+  us k;
+  for (k = 0; k < vt.size;++k)
   {
-	pthread_join(vtHead->data, NULL);
-	VEC_THREAD *t;
-	t = vtHead;
-	vtHead = vtHead->next;
-	free(t);
+	THREADDATA* td;
+	td = (THREADDATA*)get(&vt,k);
+	pthread_join(td->data, NULL);
+	close(td->socket);
+	free(td);
   }
+  clear(&vt);
 }
 
 void *handleMsg(void* ptr)
@@ -283,7 +280,7 @@ void *handleMsg(void* ptr)
   //we need to wait until the round matches our own
   //however, if foundNum == N, then rounds stop increasing
   //and we accept anyways.
-  printf("MsgGot!%d:%d %d:%d t:%d\n",r,curRound, foundNum, N, pthread_self());
+  printf("MsgGot!%d:%d %d:%d t:%ld\n",r,curRound, foundNum, N, pthread_self());
   fflush(stdout);
   while (r > curRound && foundNum < N )
 	;
@@ -298,16 +295,16 @@ void *handleMsg(void* ptr)
   else
   {
     pthread_mutex_lock(&vecLock);
-    roundCount(vec, r - 1, &count);
+    roundCount(&vec, r - 1, &count);
     ids = (us*)malloc(count*sizeof(us));
-    fillWithRound(vec, ids, r - 1);
+    fillWithRound(&vec, ids, r - 1);
     pthread_mutex_unlock(&vecLock);
   }
   UMSG u;
   u.count = count;
   u.ids = ids;
   serialize_UMSG(buf,u);
-  printf("MsgResponding!%d:%d %d:%d t:%d\n",r,curRound, foundNum, N, pthread_self());
+  printf("MsgResponding!%d:%d %d:%d t:%ld\n",r,curRound, foundNum, N, pthread_self());
   fflush(stdout);
   send(sock , buf , 1024, 0 );
   free(ids);

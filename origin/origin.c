@@ -11,10 +11,11 @@
 #include <resolv.h>
 #include <pthread.h>
 #include "unitStructs.h"
+#include "vecLib.h"
 
 PROC *procs;
 unsigned totalProcs = 0;
-VEC_ECC **eccs;
+VEC *eccs;
 pthread_mutex_t procLoc;
 void getProcs();
 void *contactProc(void* ptr); 
@@ -22,7 +23,7 @@ void checkIPbuffer(char *IPbuffer) ;
 int main()
 {
   getProcs();
-  eccs = (VEC_ECC**)malloc(totalProcs*sizeof(VEC_ECC*));
+  eccs = (VEC*)malloc(totalProcs*sizeof(VEC));
   pthread_t *threads;
   threads = (pthread_t*)malloc(totalProcs*sizeof(pthread_t));
   unsigned i;
@@ -33,7 +34,7 @@ int main()
   for (i = 0; i < totalProcs; ++i)
   {
 	printf("P%d results:\n",i);
-	printECC(eccs[i]);
+	printECC(&eccs[i]);
   }
   return 0;
 }
@@ -42,7 +43,6 @@ void *contactProc(void* ptr)
 {
   PROC *p = (PROC*)ptr;
   pthread_mutex_lock(&procLoc);
-  printProcs(1,p);
   pthread_mutex_unlock(&procLoc);
   //setup socket connection
   int sock = 0; 
@@ -55,8 +55,6 @@ void *contactProc(void* ptr)
 	return (void*)-1; 
   } 
 
-  printf("set ip p:%d\n",p->id);
-  
   serv_addr.sin_family = AF_INET; 
   serv_addr.sin_port = htons(ORIGIN_PORT); 
        
@@ -126,7 +124,8 @@ void getProcs()
   int phase = 0;
   int numProc = 0;
   int startId = -1, endId = -1, startProc = -1, endProc = -1, startPort = -1, endPort = -1;
-  VEC_INT *startN = NULL, *endN = NULL;
+  VEC neigh;
+  init(&neigh);
   int curN = -1;
   while (fgets(line, sizeof(line), file) && phase < 3)
   {
@@ -188,20 +187,7 @@ void getProcs()
 		}
 		else if (curN != -1)
 		{
-		  if (startN == NULL)
-		  {
-			startN = (VEC_INT*)malloc(sizeof(VEC_INT));
-			startN->data = (unsigned)curN;
-			startN->next == NULL;
-			endN = startN;
-		  }
-		  else
-		  {
-			endN->next = (VEC_INT*)malloc(sizeof(VEC_INT));
-			endN = endN->next;
-			endN->data = curN;
-			endN->next = NULL;
-		  }
+		  putBack(&neigh,curN);
 		  curN = -1;
 		}
 	  }
@@ -212,30 +198,15 @@ void getProcs()
 		{
 		  if (totalProcs == numProc)
 			phase = 3;
-		  else if (startN != NULL)
+		  else if (neigh.size != 0)
 		  {
-			unsigned size = 0;
-			VEC_INT* temp = startN;
-			while(temp != NULL)
-			{
-			  size++;
-			  temp = temp->next;
-			}
-			procs[totalProcs].nCount = size;
-			procs[totalProcs].neighbors = (us*)malloc(size*sizeof(unsigned));
-			size = 0;
-			temp = startN;
-			while(temp != NULL)
-			{
-			  procs[totalProcs].neighbors[size] = temp->data;
-			  size++;
-			  VEC_INT* z = temp;
-			  temp = temp->next;
-			  free(z);
-			}
+			procs[totalProcs].nCount = neigh.size;
+			procs[totalProcs].neighbors = (us*)malloc(neigh.size*sizeof(unsigned));
+			us i;
+			for (i = 0; i < neigh.size; ++i)
+			  procs[totalProcs].neighbors[i] = *((int*)(get(&neigh,i)));
 			totalProcs++;
-			startN = NULL;
-			endN = NULL;
+			clear(&neigh);
 		  }
 		}
 		else if (phase == 1)
