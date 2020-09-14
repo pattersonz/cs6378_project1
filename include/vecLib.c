@@ -20,7 +20,7 @@ void putBack(VEC* v, void* d)
   {
 	v->container = (VECDATA*)malloc(sizeof(VECDATA));
 	v->container->data = d;
-	v->container->data = NULL;
+	v->container->next = NULL;
 	v->size=1;
 	return;
   }
