@@ -1,11 +1,11 @@
 # global parameter
 5
 
-0 dc02 1234 # nodeID hostName listenPort
-1 dc03 1233
-2 dc04 1233
-3 dc05 1232
-4 dc06 1233
+0 dc02 2234 # nodeID hostName listenPort
+1 dc03 2233
+2 dc04 2233
+3 dc05 2232
+4 dc06 2233
 
 1 4   # space delimited listofneighbors for node 0
 0 2 3 # space delimited listofneighbors for node 1
