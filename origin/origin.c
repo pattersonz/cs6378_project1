@@ -126,7 +126,9 @@ void getProcs()
   int startId = -1, endId = -1, startProc = -1, endProc = -1, startPort = -1, endPort = -1;
   VEC neigh;
   init(&neigh);
-  int curN = -1;
+  int* curN;
+  curN = (int*)malloc(sizeof(int));
+  *curN = -1;
   while (fgets(line, sizeof(line), file) && phase < 3)
   {
 	unsigned i;
@@ -181,14 +183,15 @@ void getProcs()
 		
 		if (c >= '0' && c <= '9')
 		{
-		  if (curN < 0)
-			curN = 0;
-		  curN = curN*10 + (c - '0');
+		  if (*curN < 0)
+			*curN = 0;
+		  *curN = *curN*10 + (c - '0');
 		}
-		else if (curN != -1)
+		else if (*curN != -1)
 		{
-		  putBack(&neigh,curN);
-		  curN = -1;
+		  putBack(&neigh,(void*)curN);
+		  curN = (int*)malloc(sizeof(int));
+		  *curN = -1;
 		}
 	  }
 
