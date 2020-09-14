@@ -231,7 +231,6 @@ void *recMsg(void* ptr)
   address.sin_addr.s_addr = INADDR_ANY; 
   address.sin_port = htons( thisPort ); 
        
-  // Forcefully attaching socket to the port 8080 
   if (bind(server_fd, (struct sockaddr *)&address,  
 		   sizeof(address))<0) 
   { 
@@ -244,6 +243,7 @@ void *recMsg(void* ptr)
     return (void*)-1; 
   }
   VEC vt;
+  init(&vt);
   while (1)
   {
 	new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen); 
@@ -285,7 +285,7 @@ void *handleMsg(void* ptr)
   while (r > curRound && foundNum < N )
 	;
   us *ids;
-  us count;
+  us count = 0;
   if (r == 0)
   {
 	count = 1;

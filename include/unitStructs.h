@@ -84,6 +84,8 @@ byte *serialize_u_short(byte *buf, us v)
 {
   buf[0] = v >> 8;
   buf[1] = v;
+  printf("send:%d\n",v);
+  fflush(stdout);
   return buf + 2;
 }
 
@@ -169,6 +171,8 @@ byte *deserialize_u_short(byte *buf, us* v)
   (*v) = buf[0];
   (*v) = (*v) << 8;
   (*v) = (*v) + buf[1];
+  printf("got:%d\n",*v);
+  fflush(stdout);
   return buf + 2;
 }
 
