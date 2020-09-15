@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Change this to your netid
 netid=zjp170130
 
@@ -26,9 +25,14 @@ cat $CONFIGLOCAL | sed -e "s/#.*//" | sed -e "/^\s*$/d" |
     	read line
     	p=$( echo $line | awk '{ print $1 }' )
         host=$( echo $line | awk '{ print $2 }' )
-	
-	gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host echo $BINDIR$PROG; gdb -ex run $BINDIR$PROG; exec bash" &
-
-        n=$(( n + 1 ))
+		
+		if [ "$#" = "1" ] && [ "$1" = "gdb" ]
+		then
+			gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host echo $BINDIR$PROG; gdb -ex run $BINDIR$PROG; exec bash" &
+			n=$(( n + 1 ))
+		else
+			gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host echo $BINDIR$PROG; $BINDIR$PROG; exec bash" &
+			n=$(( n + 1 ))
+		fi
     done
 )

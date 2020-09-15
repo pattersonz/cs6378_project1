@@ -14,27 +14,53 @@
 #include "vecLib.h"
 #include "unitStructs.h"
 
-us thisId;
-us nCount;
-us thisPort;
-NEIGHBOR* ns;
-us foundNum;
-us N;
-us curRound;
+us thisId; //the id associated with this process.
+us nCount; //number of neighbors
+us thisPort; //port this process is listening on
+NEIGHBOR* ns; //array of neighbors
+us foundNum; //number of found processes
+us N; //total number of processes
+us curRound; //current round of the processes
 
 
-us responses;
-pthread_mutex_t resLock;
-pthread_barrier_t resBar;
+us responses; //the number of responses expected
+pthread_mutex_t resLock; //lock for editing number of responses
+pthread_barrier_t resBar; //barrier to sync threads
 
-VEC vec;
-pthread_mutex_t vecLock; 
+VEC vec; //vector of found nodes (id and round)
+pthread_mutex_t vecLock; //lock for editing vector of nodes
 
+/*
+ * Thread funciton to contact the origin. Opens on start and
+ * listens on the designated originPort for information.
+ */
 void *contactOrigin(void* ptr);
+
+/*
+ * opens up sockets to accept requests for communication from
+ * neighbors. Can accomodate as many messages as needed. Each
+ * new accpet opens an instance of handleMsg
+ */
 void *recMsg(void* ptr);
+
+/*
+ * Once the port has been accepted, the handler gets what round
+ * the contacting processes is on and returns what ids it was able
+ * to find the previous round. 
+ */
 void *handleMsg(void* ptr);
+
+/*
+ * Attempts to open a connection with a listening neighbor, upon connection
+ * a loop is executed until N ids were found. Each round all neighbors send
+ * potential candidates. If a candidate is not in the found list, it is added.
+ * (this is all done in mutex)
+ */
 void *sendMsg(void* ptr);
 
+/*
+ * Driver
+ */
 int main()
 {
   init(&vec);

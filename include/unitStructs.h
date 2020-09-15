@@ -5,8 +5,9 @@
 #include <pthread.h>
 #include "vecLib.h"
 #define ORIGIN_PORT 1024
-typedef unsigned char byte;
-typedef unsigned short us;
+typedef unsigned char byte; //shorthand
+typedef unsigned short us; //shorthand
+//All necessary information to establish a process
 typedef struct proc
 {
   us id;
@@ -15,7 +16,7 @@ typedef struct proc
   us *neighbors;
   us nCount;
 } PROC;
-
+//information to be sent from origin to unit
 typedef struct origin_message
 {
   us id;
@@ -25,38 +26,40 @@ typedef struct origin_message
   us *ports;
   us totalProc;
 } OMSG;
-
+//information to be sent from unit to unit
 typedef struct unit_message
 {
   us count;
   us *ids;
 } UMSG;
-
+//collection for contacting a neighbor
 typedef struct neighbor_pair
 {
   us port;
   char *name;
 } NEIGHBOR;
-
-
+//collection for results
 typedef struct eccen
 {
   us id;
   us round;
 } ECC;
-
-int EccIDEq(void* a, void* b)
-{
-  return ((ECC*)(b))->id == *((unsigned short*)a);
-}
-
+//collection for threads
 typedef struct pthreadData
 {
   pthread_t data;
   int socket;
 } THREADDATA;
 
+/*
+ * comparison function for searching for ECCS
+ */
+int EccIDEq(void* a, void* b)
+{
+  return ((ECC*)(b))->id == *((unsigned short*)a);
+}
 
+//prints a process
 void printProcs(unsigned count, PROC* p)
 {
   unsigned i,j;
@@ -69,6 +72,7 @@ void printProcs(unsigned count, PROC* p)
   }
 }
 
+//print an origin message
 void printOMSG(OMSG o)
 {
   printf("id:%d port:%d neighbors:%d, N:%d\n", o.id, o.port, o.nCount, o.totalProc);
@@ -79,6 +83,12 @@ void printOMSG(OMSG o)
   }
   fflush(stdout);
 }
+
+/*
+ * The following is all serializing and deserializing, or converting
+ * to and from byte arrays. All serializing is done in a manner so that
+ * however the data is transfered, it comes out in the same way.
+ */
 
 byte *serialize_u_short(byte *buf, us v)
 {
@@ -257,6 +267,11 @@ byte *deserialize_VEC_ECC(byte* buf, VEC *v)
   return buf;
 }
 
+
+/*
+ * returns the number of instances in a vector
+ * which have the specified round number
+ */
 void roundCount(VEC* vec, us r, us*c)
 {
   *c = 0;
@@ -266,6 +281,10 @@ void roundCount(VEC* vec, us r, us*c)
 	  ++(*c);
 }
 
+/*
+ * fills an array of ids with all found on the 
+ * specified round
+ */
 void fillWithRound(VEC* v, us* ids, us r)
 {
   us c = 0,i;
@@ -277,6 +296,7 @@ void fillWithRound(VEC* v, us* ids, us r)
 	}
 }
 
+//prints ECC vector
 void printECC(VEC* v)
 {
   us max = 0,i,j;

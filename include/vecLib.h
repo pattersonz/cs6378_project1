@@ -1,6 +1,12 @@
 #ifndef VECLIB_H
 #define VECLIB_H
 #include <stdlib.h>
+
+/*
+ * This is my own personal library for creating vectors
+ * through the use of void*. The names are pretty self
+ * explanatory and work as you would imagine.
+ */
 typedef struct vec_data
 {
   void* data;

@@ -13,13 +13,27 @@
 #include "unitStructs.h"
 #include "vecLib.h"
 
-PROC *procs;
-unsigned totalProcs = 0;
-VEC *eccs;
-pthread_mutex_t procLoc;
+PROC *procs; //array of processes
+unsigned totalProcs = 0;//number of processes
+VEC *eccs; //vector holding return results
+pthread_mutex_t procLoc; //make sure two threads can't touch the vector
+
+/*
+ * Fills the processes array with the information pulled out of the
+ * config.txt
+ */
 void getProcs();
-void *contactProc(void* ptr); 
-void checkIPbuffer(char *IPbuffer) ;  
+/*
+ * This is a thread function that is tied to a specific process. It
+ * will establish a connection, send the process it's relevant info
+ * i.e., topology, size of N, port. And it will receive it's
+ * results upon finishing.
+ */
+void *contactProc(void* ptr);
+
+/*
+ * Driver
+ */
 int main()
 {
   getProcs();
@@ -237,14 +251,4 @@ void getProcs()
   fclose(file);
 }
 
-// Converts space-delimited IPv4 addresses 
-// to dotted-decimal format 
-void checkIPbuffer(char *IPbuffer) 
-{ 
-    if (NULL == IPbuffer) 
-    { 
-        perror("inet_ntoa"); 
-        exit(1); 
-    } 
-} 
   
